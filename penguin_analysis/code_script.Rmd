@@ -1,0 +1,272 @@
+---
+title: "Complete Data Analysis Workflow in R"
+author: "By Muhammad Yasir Qurashi"
+date: "`r Sys.Date()`"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## **Step 01**
+
+> Defining Research Question
+
+Investigate morphological variation among penguin species and examine relationships between body size measurements, and answer the following queries;
+
+-   Do penguin species differ in body mass?
+
+-   Is flipper length associated with body mass?
+
+-   Are there morphological differences between male and female penguins?
+
+## **Step 02**
+
+> Load Require Libraries
+
+```{r}
+# Keep remember first install these libraries in your console and then activate using library command
+
+library(tidyverse)
+library(palmerpenguins)
+library(naniar)
+library(patchwork)
+library(GGally)
+library(janitor)
+library(skimr)
+library(rstatix)
+```
+
+| Package   | Role                       |
+|-----------|----------------------------|
+| tidyverse | data manipulation          |
+| janitor   | clean column names         |
+| skimr     | dataset summary            |
+| naniar    | missing data visualization |
+| GGally    | correlation plots          |
+| patchwork | combine figures            |
+| rstatix   | check outliers in once     |
+
+## **Step 03**
+
+> Load dataset
+
+```{r}
+penguin_data <- penguins
+print(penguin_data)
+```
+
+## **Step 04**
+
+> Understanding your data
+
+```{r}
+dim(penguin_data)
+nrow(penguin_data)
+ncol(penguin_data)
+colnames(penguin_data)
+head(penguin_data)
+str(penguin_data)
+glimpse(penguin_data)
+tail(penguin_data)
+slice_sample(penguin_data)
+summary(penguin_data)
+```
+
+
+| Variable          | Type        |
+|-------------------|-------------|
+| species           | categorical |
+| island            | categorical |
+| bill_length_mm    | numeric     |
+| bill_depth_mm     | numeric     |
+| flipper_length_mm | numeric     |
+| body_mass_g       | numeric     |
+| sex               | categorical |
+| year              | numeric     |
+
+-   No of rows(observation); 344
+-   No of columns(variables); 8
+
+## **Step 05**
+
+> Data Quality assessment 
+
+```{r}
+# 1. Check duplicates
+
+duplicated(penguin_data)
+sum(duplicated(penguin_data))
+
+## No duplicate values detected
+
+# 2. Summary statistics to check unusual values
+
+skim(penguin_data)
+
+```
+
+## **Step 06**
+
+> Data Cleaning
+
+
+```{r}
+# 1. Standardize column names
+penguin_data <- penguin_data %>% clean_names() 
+ colnames(penguin_data)
+glimpse(penguin_data)
+```
+
+## **Step 07**
+
+> Handling missing values
+
+```{r}
+# 1. Checking for missing values in each column
+
+is.na.data.frame(penguin_data)
+is.na(penguin_data)
+sum(is.na(penguin_data)) # total number of missing values in a dataframe
+colSums(is.na(penguin_data)) # column wise missing values of our dataset
+vis_miss(penguin_data)
+penguin_data %>% is.na() %>% colSums() %>% barplot() # plottting missing values in our dataset
+
+# 2. remove missing values rows in each column
+
+penguin_data <- penguin_data %>% drop_na()
+
+dim(penguin_data) # 11 rows with missing values are removed from our dataset
+
+penguin_data %>% is.na() %>% colSums() %>% barplot() # Now their is no missing values in each column
+```
+
+## **Step 08**
+
+> Outlier Detection
+
+```{r}
+# 1. Checking outliers by rstatix library
+
+penguin_data %>% 
+  select(where(is.numeric)) %>% 
+  gather(variable, value) %>%
+  group_by(variable) %>%
+  identify_outliers(value)
+
+# No outliers detected
+
+# 2. Checking outliers by boxplot
+
+pg <- penguin_data %>%  
+  select(where(is.numeric)) %>% 
+  select(-year) %>% 
+  pivot_longer(everything(), names_to = "variable", values_to = "value") %>% 
+  ggplot(aes(x = variable, y = value)) +
+  geom_boxplot() +
+  facet_wrap(~variable, scales = "free_y");pg
+
+# No outliers detected
+```
+
+## **Step 09**
+
+> Data transformation
+
+If transformation is necessary we will do it, in our case we do for body_mass variable
+
+
+```{r}
+
+penguin_data1 <- penguin_data %>% 
+  mutate(body_mass_kg = body_mass_g / 1000)
+ncol(penguin_data1)
+summary(penguin_data1)
+```
+
+## **Step 10**
+
+> Exploratory Data Analysis
+
+Exploring patterns in our data
+
+```{r}
+# 1. Histogram
+
+ggplot(penguin_data, aes(body_mass_g)) +
+   geom_density() ; ggplot(penguin_data, aes(flipper_length_mm)) +
+   geom_density() ; ggplot(penguin_data, aes(bill_depth_mm)) +
+   geom_density() ; ggplot(penguin_data, aes(bill_length_mm)) +
+   geom_density()
+```
+
+```{r}
+# 2. Boxplot
+
+ggplot(penguin_data, aes(species, body_mass_g)) +
+  geom_boxplot() ; ggplot(penguin_data, aes(species, flipper_length_mm)) +
+  geom_boxplot() ; ggplot(penguin_data, aes(species, bill_length_mm)) +
+  geom_boxplot() ; ggplot(penguin_data, aes(species, bill_depth_mm)) +
+  geom_boxplot()
+
+```
+
+```{r}
+# 3. Correlation
+
+ggpairs( penguin_data1, columns = c( "bill_length_mm","bill_depth_mm","flipper_length_mm","body_mass_kg"), 
+         lower = list(continuous = wrap("points", alpha = 0.6, size = 2)),
+         upper = list(continuous = wrap("cor", size = 5)),
+         diag = list(continuous = wrap("densityDiag")))
+```
+
+
+## **Step 10**
+
+> Statistical test & Regression Analysis
+
+Test body mass differences between species  
+
+```{r}
+ anova_model <- aov(body_mass_g ~ species, data = penguin_data)
+ summary(anova_model)
+
+# Conclusion
+ 
+# Significant species differences
+
+```
+
+```{r}
+  
+model <- lm(body_mass_g ~ flipper_length_mm, data = penguin_data)
+ summary(model)
+ 
+# Conclusion
+ 
+# Flipper length significantly predicts body mass. 
+```
+
+
+## **Step 11**
+
+> Publication Ready Visualization
+
+```{r}
+ggplot(penguin_data, aes(x = flipper_length_mm, y = body_mass_g, color = species)) +
+  geom_point(size = 3) +
+  geom_smooth(method = "lm") + 
+  theme_classic()
+```
+
+> Intepretation of Analysis
+
+Penguin species differed significantly in body mass (ANOVA, p < 0.001). Gentoo penguins exhibited the highest body mass, whereas Adelie penguins were the smallest. A strong positive association between flipper length and body mass was also observed, suggesting that larger penguins possess proportionally longer flippers
+
+
+Best Regards,
+
+Muhammad Yasir Qurashi
+
+*Research Data Analysis Tools Mentor*
