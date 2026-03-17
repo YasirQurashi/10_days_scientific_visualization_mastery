@@ -1,4 +1,4 @@
-# 10 Days Scientific Visualization Training (R)
+# 10 Days Scientific Visualization Mastery (R)
 
 ## Overview
 
